@@ -1,15 +1,21 @@
 import { useState } from "react"
 import { v4 as uuidv4 } from 'uuid'
+import { useOutletContext, useNavigate, useParams } from "react-router-dom"
 
 function MovieForm() {
   const [title, setTitle] = useState("")
   const [time, setTime] = useState("")
   const [genres, setGenres] = useState("")
 
-  // Replace me
-  const director = null
+  const outlet = useOutletContext()
+  const { directors = [], setDirectors } = outlet
+  const { directorId } = useParams()
+
+  const navigate = useNavigate();
+
+  const director = directors.find((d) => String(d.id) === String(directorId)) || null
   
-  if (!director) { return <h2>Director not found.</h2>}
+  if (!directors || directors.length === 0) return <h2>Loading directors...</h2>
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -19,21 +25,23 @@ function MovieForm() {
       time: parseInt(time),
       genres: genres.split(",").map((genre) => genre.trim()),
     }
-    fetch(`http://localhost:4000/directors/${id}`, {
+    fetch(`http://localhost:4000/directors/${directorId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({movies: [...director.movies, newMovie]})
+      body: JSON.stringify({movies: [...(director.movies || []), newMovie]})
     })
     .then(r => {
       if (!r.ok) { throw new Error("failed to add movie") }
       return r.json()
     })
-    .then(data => {
-      console.log(data)
-      // handle context/state changes
-      // navigate to newly created movie page
+    .then((updatedDirector) => {
+        const updatedDirectors = directors.map((d) => 
+            String(d.id) === String(directorId) ? updatedDirector : d
+        )
+        setDirectors(updatedDirectors)
+        navigate(`/directors/${directorId}/movies/${newMovie.id}`)
     })
     .catch(console.log)
   }
